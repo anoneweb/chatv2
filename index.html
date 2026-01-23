@@ -160,14 +160,19 @@
   </div>
 
   <div id="chat-screen" class="hidden" style="height: 100%; display: flex; flex-direction: column;">
-    <header>
+  <header>
       <div class="profile-info">
         <h3 id="display-name">User</h3>
         <div class="online-status">● Online</div>
       </div>
-      <button class="btn-logout" id="btn-logout">
-        <span class="material-symbols-rounded">logout</span>
-      </button>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-logout" id="btn-search" title="Cari Teman">
+          <span class="material-symbols-rounded">search</span>
+        </button>
+        <button class="btn-logout" id="btn-logout" title="Keluar">
+          <span class="material-symbols-rounded">logout</span>
+        </button>
+      </div>
     </header>
 
     <div id="chat-box"></div>
