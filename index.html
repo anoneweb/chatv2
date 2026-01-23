@@ -3,136 +3,195 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chat V2 - Multimedia & Realtime</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-  
+  <title>Chat Premium V3</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0" />
+
   <style>
-    /* CSS MODERN DARK/LIGHT THEME */
+    /* 1. RESET & VARIABLE */
     :root {
-      --primary: #4f46e5;
-      --bg: #f3f4f6;
-      --chat-bg: #ffffff;
-      --my-msg: #4f46e5;
-      --their-msg: #e5e7eb;
-      --text: #1f2937;
+      --primary: #6C63FF;
+      --accent: #FF6584;
+      --glass: rgba(255, 255, 255, 0.85);
+      --glass-dark: rgba(255, 255, 255, 0.5);
+      --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 0; font-family: 'Poppins', sans-serif;
+      background: var(--bg-gradient);
+      height: 100vh; display: flex; justify-content: center; align-items: center;
+      color: #333; overflow: hidden;
     }
 
-    body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); height: 100vh; display: flex; flex-direction: column; }
-
-    /* LAYOUT UTAMA */
-    #app-container {
-      max-width: 600px; width: 100%; margin: 0 auto; background: white; 
-      height: 100%; display: flex; flex-direction: column; position: relative;
-      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    /* 2. MAIN CONTAINER (GLASS EFFECT) */
+    .app-container {
+      width: 100%; max-width: 450px; height: 90vh;
+      background: var(--glass);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      display: flex; flex-direction: column; overflow: hidden; position: relative;
+    }
+    
+    @media (max-width: 500px) {
+      .app-container { height: 100vh; border-radius: 0; max-width: 100%; }
     }
 
-    /* HEADER */
-    header {
-      padding: 15px; background: white; border-bottom: 1px solid #ddd;
-      display: flex; justify-content: space-between; align-items: center; z-index: 10;
-    }
-    .header-info h2 { margin: 0; font-size: 18px; }
-    .status-badge { font-size: 12px; color: green; display: flex; align-items: center; gap: 5px; }
-    .dot { width: 8px; height: 8px; background: limegreen; border-radius: 50%; }
-
-    /* LOGIN SCREEN */
-    #login-screen {
+    /* 3. AUTH SCREEN (LOGIN/REGISTER) */
+    #auth-screen {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99;
+      padding: 40px; display: flex; flex-direction: column; justify-content: center;
+      background: white; z-index: 100; transition: transform 0.3s ease;
     }
-    .login-box {
-      background: white; padding: 30px; border-radius: 15px; width: 80%; max-width: 300px; text-align: center;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    }
-    .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;}
-    .login-box button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;}
-
-    /* AREA CHAT */
-    #chat-area { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #f9fafb; }
+    .auth-title { font-size: 28px; font-weight: 600; margin-bottom: 10px; color: var(--primary); }
+    .auth-subtitle { font-size: 14px; color: #666; margin-bottom: 30px; }
     
-    .msg { max-width: 75%; padding: 10px 14px; border-radius: 14px; position: relative; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
-    .msg.me { align-self: flex-end; background: var(--my-msg); color: white; border-bottom-right-radius: 2px; }
-    .msg.others { align-self: flex-start; background: var(--their-msg); color: var(--text); border-bottom-left-radius: 2px; }
+    .input-group { margin-bottom: 15px; }
+    .input-group label { display: block; font-size: 12px; margin-bottom: 5px; font-weight: 600; color: #555; }
+    .input-field {
+      width: 100%; padding: 12px 15px; border: 2px solid #eee; border-radius: 10px;
+      font-family: inherit; transition: 0.3s;
+    }
+    .input-field:focus { border-color: var(--primary); outline: none; }
     
-    .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; cursor: pointer;}
-    .msg-meta { font-size: 10px; margin-top: 4px; opacity: 0.7; text-align: right; display: flex; justify-content: space-between;}
-    .sender-name { font-weight: bold; margin-bottom: 2px; font-size: 11px; display: block; }
-
-    /* TYPING INDICATOR */
-    #typing-indicator { 
-      padding: 5px 20px; font-size: 12px; color: #888; font-style: italic; height: 20px; 
-      background: #f9fafb;
+    .btn-primary {
+      width: 100%; padding: 14px; background: var(--primary); color: white;
+      border: none; border-radius: 10px; font-weight: 600; cursor: pointer;
+      margin-top: 10px; transition: 0.2s; box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
     }
-
-    /* INPUT AREA */
-    #input-area {
-      padding: 10px; background: white; border-top: 1px solid #eee; display: flex; align-items: center; gap: 10px;
-    }
-    #input-area input[type="text"] {
-      flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none;
-    }
-    .icon-btn {
-      background: none; border: none; cursor: pointer; color: #555; padding: 8px; border-radius: 50%; transition: 0.2s;
-    }
-    .icon-btn:hover { background: #eee; color: var(--primary); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4); }
     
-    /* Loading Overlay untuk Upload */
-    #loading-overlay {
-      display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(255,255,255,0.8); z-index: 50; justify-content: center; align-items: center; font-weight: bold;
+    .switch-text { text-align: center; margin-top: 20px; font-size: 13px; }
+    .switch-text span { color: var(--primary); cursor: pointer; font-weight: 600; text-decoration: underline; }
+
+    /* 4. CHAT HEADER */
+    header {
+      padding: 15px 20px; background: rgba(255,255,255,0.9);
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
     }
+    .profile-info h3 { margin: 0; font-size: 16px; }
+    .online-status { font-size: 11px; color: #2ecc71; display: flex; align-items: center; gap: 4px; }
+    .btn-logout { background: none; border: none; color: #ff4757; cursor: pointer; }
+
+    /* 5. CHAT AREA */
+    #chat-box {
+      flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;
+      background: #f4f7f6; scroll-behavior: smooth;
+    }
+    
+    .message { max-width: 75%; position: relative; font-size: 14px; line-height: 1.5; padding: 10px 14px; border-radius: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    
+    /* Pesan Orang Lain */
+    .message.left { align-self: flex-start; background: white; border-bottom-left-radius: 2px; color: #333; }
+    .sender-name { font-size: 10px; font-weight: bold; color: var(--primary); margin-bottom: 2px; display: block; }
+    
+    /* Pesan Saya */
+    .message.right { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
+    .message.right .sender-name { display: none; }
+    
+    .message img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
+    .time { font-size: 9px; opacity: 0.7; text-align: right; margin-top: 4px; }
+
+    /* 6. INPUT AREA */
+    .input-area {
+      padding: 15px; background: white; display: flex; align-items: center; gap: 10px;
+    }
+    .file-btn { color: #888; cursor: pointer; padding: 5px; }
+    .file-btn:hover { color: var(--primary); }
+    
+    #msg-input {
+      flex: 1; padding: 12px; background: #f0f2f5; border: none; border-radius: 20px; outline: none; font-family: inherit;
+    }
+    #send-btn {
+      background: var(--primary); color: white; border: none; width: 40px; height: 40px; border-radius: 50%;
+      cursor: pointer; display: flex; justify-content: center; align-items: center;
+    }
+
+    /* UTILITY */
+    .hidden { display: none !important; }
+    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:200; display:flex; justify-content:center; align-items:center; display:none;}
   </style>
 </head>
 <body>
 
-<div id="app-container">
+<div id="loading">Loading...</div>
+
+<div class="app-container">
   
-  <div id="login-screen">
-    <div class="login-box">
-      <h2>👋 Welcome Back</h2>
-      <input type="text" id="username-in" placeholder="Nama Panggilan..." autocomplete="off">
-      <button id="btn-login">Masuk Chat</button>
+  <div id="auth-screen">
+    <div id="form-login">
+      <div class="auth-title">Welcome Back 👋</div>
+      <div class="auth-subtitle">Masuk untuk mulai chatting</div>
+      
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="login-email" class="input-field" placeholder="contoh@email.com">
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="login-pass" class="input-field" placeholder="********">
+      </div>
+      <button id="btn-do-login" class="btn-primary">Masuk</button>
+      <div class="switch-text">Belum punya akun? <span onclick="switchForm('register')">Daftar dulu</span></div>
+    </div>
+
+    <div id="form-register" class="hidden">
+      <div class="auth-title">Create Account 🚀</div>
+      <div class="auth-subtitle">Buat akun agar chatmu aman</div>
+      
+      <div class="input-group">
+        <label>Username (Nama Tampil)</label>
+        <input type="text" id="reg-username" class="input-field" placeholder="Budi Ganteng">
+      </div>
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" class="input-field" placeholder="contoh@email.com">
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="reg-pass" class="input-field" placeholder="Minimal 6 karakter">
+      </div>
+      <button id="btn-do-register" class="btn-primary">Daftar Akun</button>
+      <div class="switch-text">Sudah punya akun? <span onclick="switchForm('login')">Login disini</span></div>
     </div>
   </div>
 
-  <header>
-    <div class="header-info">
-      <h2 id="room-title">Public Room</h2>
-      <div class="status-badge"><div class="dot"></div> <span id="online-count">0 Online</span></div>
+  <div id="chat-screen" class="hidden" style="height: 100%; display: flex; flex-direction: column;">
+    <header>
+      <div class="profile-info">
+        <h3 id="display-name">User</h3>
+        <div class="online-status">● Online</div>
+      </div>
+      <button class="btn-logout" id="btn-logout">
+        <span class="material-symbols-rounded">logout</span>
+      </button>
+    </header>
+
+    <div id="chat-box"></div>
+
+    <div class="input-area">
+      <input type="file" id="file-input" accept="image/*" hidden>
+      <span class="material-symbols-rounded file-btn" id="btn-file">image</span>
+      <input type="text" id="msg-input" placeholder="Tulis pesan..." autocomplete="off">
+      <button id="send-btn">
+        <span class="material-symbols-rounded">send</span>
+      </button>
     </div>
-    <button class="icon-btn" id="btn-logout" title="Logout">
-      <span class="material-symbols-outlined">logout</span>
-    </button>
-  </header>
-
-  <div id="chat-area"></div>
-  
-  <div id="typing-indicator"></div>
-
-  <div id="input-area">
-    <input type="file" id="file-input" accept="image/*" hidden>
-    <button class="icon-btn" id="btn-img" title="Kirim Gambar">
-      <span class="material-symbols-outlined">image</span>
-    </button>
-
-    <input type="text" id="msg-input" placeholder="Tulis pesan..." autocomplete="off">
-    
-    <button class="icon-btn" id="btn-send">
-      <span class="material-symbols-outlined">send</span>
-    </button>
   </div>
 
-  <div id="loading-overlay">Mengirim Gambar...</div>
 </div>
 
 <script type="module">
-  // 1. IMPORT MODUL FIREBASE (Versi Terbaru)
+  // Import Firebase Modules
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getDatabase, ref, push, set, onChildAdded, onValue, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
   import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-  // 2. KONFIGURASI (GANTI DENGAN PUNYAMU)
+  // === 1. KONFIGURASI FIREBASE (WAJIB GANTI INI) ===
   const firebaseConfig = {
     apiKey: "AIzaSyC8K8RbOFFov1OgL2R4KhE9_GcPZVnl3rM",
     authDomain: "chatv2-6016c.firebaseapp.com",
@@ -144,178 +203,178 @@
     measurementId: "G-1Q5S8TLX3V"
   };
 
-  // Inisialisasi
+  // Init Firebase
   const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
   const db = getDatabase(app);
   const storage = getStorage(app);
 
-  // Variabel Global
-  let currentUser = localStorage.getItem('chat_user') || null;
-  let typingTimeout = null;
+  // UI References
+  const authScreen = document.getElementById('auth-screen');
+  const chatScreen = document.getElementById('chat-screen');
+  const chatBox = document.getElementById('chat-box');
+  const loading = document.getElementById('loading');
 
-  // DOM Elements
-  const loginScreen = document.getElementById('login-screen');
-  const chatArea = document.getElementById('chat-area');
-  const msgInput = document.getElementById('msg-input');
-  const fileInput = document.getElementById('file-input');
-  const typingDiv = document.getElementById('typing-indicator');
-  const onlineCountSpan = document.getElementById('online-count');
-  const loadingOverlay = document.getElementById('loading-overlay');
-
-  // --- LOGIC AUTHENTICATION (Sederhana) ---
-  if (currentUser) {
-    loginScreen.style.display = 'none';
-    setupRealtimeFeatures();
-  }
-
-  document.getElementById('btn-login').addEventListener('click', () => {
-    const name = document.getElementById('username-in').value.trim();
-    if(name) {
-      currentUser = name;
-      localStorage.setItem('chat_user', name);
-      loginScreen.style.display = 'none';
-      setupRealtimeFeatures();
+  // --- LOGIC AUTHENTICATION ---
+  
+  // Cek Status Login (Realtime)
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // User Sedang Login
+      document.getElementById('display-name').textContent = user.displayName || user.email;
+      authScreen.style.transform = "translateY(-100%)"; // Animasi slide up
+      setTimeout(() => {
+          authScreen.classList.add('hidden');
+          chatScreen.classList.remove('hidden');
+          chatScreen.style.display = 'flex'; // Fix flex issue
+      }, 300);
+    } else {
+      // User Belum Login
+      authScreen.classList.remove('hidden');
+      authScreen.style.transform = "translateY(0)";
+      chatScreen.classList.add('hidden');
     }
   });
 
-  document.getElementById('btn-logout').addEventListener('click', () => {
-    // Hapus status online sebelum logout
-    if (currentUser) remove(ref(db, `status/${currentUser}`));
-    localStorage.removeItem('chat_user');
-    location.reload();
+  // Fungsi Register
+  document.getElementById('btn-do-register').addEventListener('click', async () => {
+    const email = document.getElementById('reg-email').value;
+    const pass = document.getElementById('reg-pass').value;
+    const username = document.getElementById('reg-username').value;
+
+    if(!email || !pass || !username) return alert("Semua kolom wajib diisi!");
+    
+    showLoading(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      // Simpan Nama User
+      await updateProfile(userCredential.user, { displayName: username });
+      alert("Pendaftaran Berhasil! Selamat datang " + username);
+    } catch (error) {
+      alert("Error: " + error.message);
+    } finally {
+      showLoading(false);
+    }
   });
 
-  // --- LOGIC KIRIM PESAN ---
-  async function sendMessage(text = null, imgUrl = null) {
-    if (!currentUser) return;
-    
-    const chatRef = ref(db, 'messages');
-    const newMsg = {
-      user: currentUser,
-      text: text || "",
-      image: imgUrl || "",
-      timestamp: Date.now()
+  // Fungsi Login
+  document.getElementById('btn-do-login').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+
+    showLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (error) {
+      alert("Login Gagal: Password salah atau email tidak ditemukan.");
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  // Fungsi Logout
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    signOut(auth);
+  });
+
+  // --- LOGIC CHAT ---
+
+  // Kirim Pesan
+  document.getElementById('send-btn').addEventListener('click', sendMessage);
+  document.getElementById('msg-input').addEventListener('keydown', (e) => {
+    if(e.key === "Enter") sendMessage();
+  });
+
+  async function sendMessage() {
+    const input = document.getElementById('msg-input');
+    const text = input.value.trim();
+    const user = auth.currentUser;
+
+    if (!text || !user) return;
+
+    const msgData = {
+      uid: user.uid,
+      name: user.displayName || "User",
+      text: text,
+      type: 'text',
+      timestamp: serverTimestamp()
     };
-    await push(chatRef, newMsg);
-    msgInput.value = "";
+
+    await push(ref(db, 'chats_v3'), msgData);
+    input.value = "";
   }
 
-  document.getElementById('btn-send').addEventListener('click', () => {
-    if (msgInput.value.trim()) sendMessage(msgInput.value.trim());
+  // Kirim Gambar
+  document.getElementById('btn-file').addEventListener('click', () => {
+    document.getElementById('file-input').click();
   });
 
-  msgInput.addEventListener('keydown', (e) => {
-    if (e.key === "Enter") document.getElementById('btn-send').click();
-    handleTyping();
-  });
-
-  // --- LOGIC UPLOAD GAMBAR (FIREBASE STORAGE) ---
-  document.getElementById('btn-img').addEventListener('click', () => fileInput.click());
-
-  fileInput.addEventListener('change', async (e) => {
+  document.getElementById('file-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    const user = auth.currentUser;
+    if (!file || !user) return;
 
-    loadingOverlay.style.display = 'flex'; // Tampilkan loading
-
+    showLoading(true);
     try {
-      // 1. Buat referensi unik
-      const fileName = Date.now() + '-' + file.name;
-      const storageRef = sRef(storage, 'chat_images/' + fileName);
-
-      // 2. Upload
+      const storageRef = sRef(storage, `images/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
-
-      // 3. Ambil URL
       const url = await getDownloadURL(storageRef);
 
-      // 4. Kirim sebagai pesan
-      await sendMessage(null, url);
+      const msgData = {
+        uid: user.uid,
+        name: user.displayName || "User",
+        text: url, // URL gambar disimpan di text
+        type: 'image',
+        timestamp: serverTimestamp()
+      };
 
+      await push(ref(db, 'chats_v3'), msgData);
     } catch (err) {
       alert("Gagal upload: " + err.message);
     } finally {
-      loadingOverlay.style.display = 'none'; // Sembunyikan loading
-      fileInput.value = ''; // Reset input
+      showLoading(false);
+      document.getElementById('file-input').value = ""; // Reset
     }
   });
 
-  // --- LOGIC TERIMA PESAN (REALTIME) ---
-  onChildAdded(ref(db, 'messages'), (snapshot) => {
-    const data = snapshot.val();
-    renderMessage(data);
-  });
+  // Terima Pesan (Realtime)
+  onChildAdded(ref(db, 'chats_v3'), (snapshot) => {
+    const msg = snapshot.val();
+    const user = auth.currentUser;
+    const isMe = user && msg.uid === user.uid;
 
-  function renderMessage(data) {
-    const isMe = data.user === currentUser;
     const div = document.createElement('div');
-    div.className = `msg ${isMe ? 'me' : 'others'}`;
+    div.className = `message ${isMe ? 'right' : 'left'}`;
 
-    let content = '';
-    if (data.user !== currentUser) {
-        content += `<span class="sender-name">${data.user}</span>`;
-    }
-
-    if (data.image) {
-      content += `<img src="${data.image}" onclick="window.open(this.src)" alt="Image">`;
-    }
-    if (data.text) {
-      content += `<div>${data.text}</div>`;
-    }
-
-    // Format jam
-    const time = new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    content += `<div class="msg-meta"><span>${time}</span></div>`;
-
-    div.innerHTML = content;
-    chatArea.appendChild(div);
-    chatArea.scrollTop = chatArea.scrollHeight; // Auto scroll ke bawah
-  }
-
-  // --- FITUR KEREN: TYPING INDICATOR & ONLINE STATUS ---
-  function setupRealtimeFeatures() {
+    let contentHTML = `<span class="sender-name">${msg.name}</span>`;
     
-    // 1. Deteksi User Online
-    const myStatusRef = ref(db, `status/${currentUser}`);
-    const connectedRef = ref(db, '.info/connected');
+    if (msg.type === 'image') {
+      contentHTML += `<img src="${msg.text}" onclick="window.open(this.src)">`;
+    } else {
+      contentHTML += `${msg.text}`;
+    }
 
-    onValue(connectedRef, (snap) => {
-      if (snap.val() === true) {
-        set(myStatusRef, "online");
-        onDisconnect(myStatusRef).remove(); // Hapus otomatis kalau internet putus
-      }
-    });
+    const time = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    contentHTML += `<div class="time">${time}</div>`;
 
-    // Hitung berapa orang online
-    onValue(ref(db, 'status'), (snap) => {
-      const count = snap.size || 0;
-      onlineCountSpan.textContent = `${count} Online`;
-    });
+    div.innerHTML = contentHTML;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
 
-    // 2. Deteksi Orang Lain Mengetik
-    onValue(ref(db, 'typing'), (snap) => {
-      const typers = [];
-      snap.forEach(child => {
-        if (child.key !== currentUser && child.val()) typers.push(child.key);
-      });
-      
-      if (typers.length > 0) {
-        typingDiv.textContent = `${typers.join(', ')} sedang mengetik...`;
-      } else {
-        typingDiv.textContent = '';
-      }
-    });
-  }
+  // --- UTILITY ---
+  window.switchForm = (type) => {
+    if (type === 'register') {
+      document.getElementById('form-login').classList.add('hidden');
+      document.getElementById('form-register').classList.remove('hidden');
+    } else {
+      document.getElementById('form-login').classList.remove('hidden');
+      document.getElementById('form-register').classList.add('hidden');
+    }
+  };
 
-  // Kirim status mengetik saya ke DB
-  function handleTyping() {
-    const myTypingRef = ref(db, `typing/${currentUser}`);
-    set(myTypingRef, true);
-    
-    if (typingTimeout) clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-      remove(myTypingRef);
-    }, 2000); // Hilang setelah 2 detik diam
+  function showLoading(show) {
+    loading.style.display = show ? 'flex' : 'none';
   }
 </script>
 
