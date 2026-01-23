@@ -167,7 +167,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getDatabase, ref, push, set, get, onChildAdded, onValue, off, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getDatabase, ref, push, set, get, onChildAdded, onValue, off, update, onChildChanged, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
   import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
   // === ⚠️ GANTI CONFIG DI BAWAH INI ===
@@ -266,8 +266,10 @@
   });
 
   // Load Daftar Kontak (Riwayat Chat)
-  function loadContacts() {
+function loadContacts() {
     const contactsRef = ref(db, 'contacts/' + myUsername);
+    
+    // Gunakan 'onValue' agar realtime update saat ada pesan baru masuk
     onValue(contactsRef, (snap) => {
       const listDiv = document.getElementById('contact-list');
       listDiv.innerHTML = "";
@@ -277,15 +279,45 @@
         return;
       }
 
+      // Kita ubah object jadi array supaya bisa disortir berdasarkan waktu chat terakhir
+      const contactsArray = [];
       snap.forEach(child => {
-        const partnerName = child.key;
+        const data = child.val();
+        // Handle kompatibilitas data lama (yang isinya cuma 'true')
+        const lastMsg = (typeof data === 'object') ? (data.lastMsg || "Chat baru") : "Klik untuk chat";
+        const lastTime = (typeof data === 'object') ? (data.lastTime || 0) : 0;
+        
+        contactsArray.push({
+          username: child.key,
+          lastMsg: lastMsg,
+          lastTime: lastTime
+        });
+      });
+
+      // Urutkan: Chat terbaru di paling atas
+      contactsArray.sort((a, b) => b.lastTime - a.lastTime);
+
+      // Render ke HTML
+      contactsArray.forEach(contact => {
         const div = document.createElement('div');
         div.className = "contact-item";
+        
+        // Format waktu sederhana
+        let timeDisplay = "";
+        if(contact.lastTime) {
+           const date = new Date(contact.lastTime);
+           timeDisplay = date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        }
+
         div.innerHTML = `
-          <div class="avatar-circle">${partnerName[0].toUpperCase()}</div>
-          <div><b>@${partnerName}</b></div>
+          <div class="avatar-circle">${contact.username[0].toUpperCase()}</div>
+          <div class="contact-info">
+            <div class="contact-name">@${contact.username}</div>
+            <div class="contact-last-msg">${contact.lastMsg}</div>
+          </div>
+          <div class="contact-time">${timeDisplay}</div>
         `;
-        div.onclick = () => startPrivateChat(partnerName);
+        div.onclick = () => startPrivateChat(contact.username);
         listDiv.appendChild(div);
       });
     });
@@ -314,33 +346,76 @@
     loadMessages(currentRoomId);
   }
 
+// Tambahkan variabel global untuk listener
+  let messagesRef = null; 
+
   function loadMessages(roomId) {
     chatBox.innerHTML = "";
-    // Matikan listener lama kalau ada (supaya gak dobel)
-    // Di versi simple ini kita langsung assign onChildAdded baru
     
-    const messagesRef = ref(db, 'private_messages/' + roomId);
+    // Matikan listener lama (PENTING AGAR TIDAK DOUBLE)
+    if (messagesRef) off(messagesRef);
+
+    messagesRef = ref(db, 'private_messages/' + roomId);
     
-    // Hapus listener sebelumnya (sedikit trik, kita pakai 'off' manual kalau perlu, tapi disini kita overwrite UI)
-    // Untuk performa terbaik sebaiknya simpan referensi listener, tapi untuk pemula ini cukup.
-    
+    // 1. LISTENER PESAN MASUK (onChildAdded)
     onChildAdded(messagesRef, (snap) => {
       const msg = snap.val();
-      renderMessage(msg);
+      const msgKey = snap.key; // ID Unik pesan
+
+      // LOGIKA READ:
+      // Jika pesan ini dari TEMAN dan statusnya belum read (false/undefined)
+      // Maka kita update di database menjadi read: true
+      if (msg.sender !== myUsername && !msg.read) {
+         update(ref(db, `private_messages/${roomId}/${msgKey}`), { read: true });
+      }
+
+      renderMessage(msg, msgKey);
+    });
+
+    // 2. LISTENER PERUBAHAN STATUS (onChildChanged)
+    // Ini agar saat pesan kita dibaca teman, centang di HP kita berubah warna
+    onChildChanged(messagesRef, (snap) => {
+      const data = snap.val();
+      const key = snap.key;
+      
+      // Cari elemen pesan di layar berdasarkan ID
+      const msgElement = document.getElementById(`msg-${key}`);
+      if (msgElement) {
+        // Update ikon centang
+        const tickElement = msgElement.querySelector('.tick');
+        if (tickElement && data.read) {
+           tickElement.classList.add('read'); // Tambah class hijau/biru
+           tickElement.textContent = "done_all"; // Ubah icon jadi centang dua
+        }
+      }
     });
   }
 
-  function renderMessage(msg) {
+  function renderMessage(msg, key) {
     const isMe = msg.sender === myUsername;
     const div = document.createElement('div');
     div.className = `message ${isMe ? 'me' : 'friend'}`;
+    div.id = `msg-${key}`; // Pasang ID supaya bisa diupdate nanti
     
     let content = "";
     if(msg.type === 'image') content = `<img src="${msg.text}" onclick="window.open(this.src)">`;
     else content = `<div>${msg.text}</div>`;
     
     const time = new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    div.innerHTML = `${content} <span class="msg-time">${time}</span>`;
+    
+    // Logika Icon Centang
+    // done = centang satu (terkirim)
+    // done_all = centang dua (dibaca)
+    const tickIcon = msg.read ? "done_all" : "done"; 
+    const tickClass = msg.read ? "tick read" : "tick";
+
+    div.innerHTML = `
+      ${content} 
+      <div class="msg-footer">
+        <span class="msg-time">${time}</span>
+        <span class="material-symbols-rounded ${tickClass}">${tickIcon}</span>
+      </div>
+    `;
     
     chatBox.appendChild(div);
     chatBox.scrollTop = chatBox.scrollHeight;
@@ -350,17 +425,39 @@
   document.getElementById('btn-send').addEventListener('click', sendText);
   document.getElementById('msg-input').addEventListener('keydown', e => { if(e.key === "Enter") sendText(); });
 
+// Import 'update' dari firebase database di bagian paling atas script:
+  // import { ..., update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  // PASTIKAN KAMU MENAMBAHKAN 'update' DI LIST IMPORT
+
   async function sendText() {
     const input = document.getElementById('msg-input');
     const text = input.value.trim();
     if(!text || !currentRoomId) return;
 
+    const timestamp = serverTimestamp();
+
+    // 1. Kirim Pesan ke Room Chat
+    // Default read: false (Belum dibaca)
     await push(ref(db, 'private_messages/' + currentRoomId), {
       sender: myUsername,
       text: text,
       type: 'text',
-      timestamp: serverTimestamp()
+      read: false, 
+      timestamp: timestamp
     });
+
+    // 2. Update "Last Message" di Kontak KITA dan DIA
+    const lastMsgData = {
+      lastMsg: text,
+      lastTime: timestamp
+    };
+
+    // Update kontak kita (supaya kita lihat chat paling atas)
+    update(ref(db, `contacts/${myUsername}/${currentPartner}`), lastMsgData);
+    
+    // Update kontak dia (supaya notif muncul di lobinya)
+    update(ref(db, `contacts/${currentPartner}/${myUsername}`), lastMsgData);
+
     input.value = "";
   }
 
