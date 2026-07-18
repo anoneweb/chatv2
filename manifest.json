@@ -1,0 +1,11 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Citchat",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "Citchat",
+  "start_url": "/",
+  "theme_color": "#ffffff"
+}
