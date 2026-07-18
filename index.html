@@ -95,18 +95,6 @@
     /* UTILS */
     .hidden { display: none !important; }
     #loading { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:200; display:none; justify-content:center; align-items:center; font-weight:bold;}
-  /* TAMBAHAN UNTUK FITUR TARIK PESAN & MENGETIK */
-.msg-deleted { font-style: italic; color: #888; font-size: 13px; }
-.btn-delete { 
-  background: none; border: none; color: rgba(255, 255, 255, 0.8); 
-  cursor: pointer; padding: 0; margin-right: 8px; display: flex; align-items: center;
-}
-.message.me .btn-delete:hover { color: #ff4d4d; }
-.typing-indicator { 
-  font-size: 12px; color: #888; font-style: italic; 
-  padding: 5px 20px; background: #f4f7f6;
-}
-    
   </style>
 </head>
 <body>
@@ -165,11 +153,7 @@
     </div>
 
     <div id="chat-box"></div>
-<div id="chat-box"></div>
 
-<!-- Tambahkan baris ini -->
-<div id="typing-indicator" class="typing-indicator hidden"></div>
-    
     <div class="input-area">
       <input type="file" id="file-input" hidden accept="image/*">
       <button class="btn-icon" id="btn-img"><span class="material-symbols-rounded">image</span></button>
@@ -368,16 +352,6 @@ function loadContacts() {
     });
   }
 
-  // --- FUNGSI TARIK PESAN ---
-window.hapusPesan = async (key) => {
-  if(confirm("Yakin ingin menarik pesan ini?")) {
-    await update(ref(db, `private_messages/${currentRoomId}/${key}`), {
-      isDeleted: true,
-      text: "Pesan telah ditarik"
-    });
-  }
-};
-
   // --- 3. PRIVATE CHAT SYSTEM ---
 
   function startPrivateChat(partnerName) {
@@ -402,97 +376,79 @@ window.hapusPesan = async (key) => {
   }
 
 // Tambahkan variabel global untuk listener
-let typingRef = null; // Tambahkan variabel global ini bersama messagesRef
+  let messagesRef = null; 
 
-function loadMessages(roomId) {
-  chatBox.innerHTML = "";
-  
-  // Matikan listener lama
-  if (messagesRef) off(messagesRef);
-  if (typingRef) off(typingRef); 
+  function loadMessages(roomId) {
+    chatBox.innerHTML = "";
+    
+    // Matikan listener lama (PENTING AGAR TIDAK DOUBLE)
+    if (messagesRef) off(messagesRef);
 
-  messagesRef = ref(db, 'private_messages/' + roomId);
-  typingRef = ref(db, 'typing_status/' + roomId + '/' + currentPartner);
-  
-  // 1. LISTENER PESAN BARU
-  onChildAdded(messagesRef, (snap) => {
-    const msg = snap.val();
-    const msgKey = snap.key;
-    if (msg.sender !== myUsername && !msg.read) {
-       update(ref(db, `private_messages/${roomId}/${msgKey}`), { read: true });
-    }
-    renderMessage(msg, msgKey);
-  });
+    messagesRef = ref(db, 'private_messages/' + roomId);
+    
+    // 1. LISTENER PESAN MASUK (onChildAdded)
+    onChildAdded(messagesRef, (snap) => {
+      const msg = snap.val();
+      const msgKey = snap.key; // ID Unik pesan
 
-  // 2. LISTENER PERUBAHAN PESAN (Saat dibaca atau ditarik)
-  onChildChanged(messagesRef, (snap) => {
-    // Kita cukup panggil fungsi renderMessage lagi. Karena ID elemennya sama,
-    // HTML akan otomatis terganti (me-replace) dengan tampilan pesan yang sudah ditarik.
-    renderMessage(snap.val(), snap.key); 
-  });
+      // LOGIKA READ:
+      // Jika pesan ini dari TEMAN dan statusnya belum read (false/undefined)
+      // Maka kita update di database menjadi read: true
+      if (msg.sender !== myUsername && !msg.read) {
+         update(ref(db, `private_messages/${roomId}/${msgKey}`), { read: true });
+      }
 
-  // 3. LISTENER INDIKATOR MENGETIK (Dari Teman)
-  onValue(typingRef, (snap) => {
-    const isTyping = snap.val();
-    const indicator = document.getElementById('typing-indicator');
-    if (isTyping) {
-      indicator.textContent = "@" + currentPartner + " sedang mengetik...";
-      indicator.classList.remove('hidden');
-      chatBox.scrollTop = chatBox.scrollHeight;
-    } else {
-      indicator.classList.add('hidden');
-    }
-  });
-}
+      renderMessage(msg, msgKey);
+    });
+
+    // 2. LISTENER PERUBAHAN STATUS (onChildChanged)
+    // Ini agar saat pesan kita dibaca teman, centang di HP kita berubah warna
+    onChildChanged(messagesRef, (snap) => {
+      const data = snap.val();
+      const key = snap.key;
+      
+      // Cari elemen pesan di layar berdasarkan ID
+      const msgElement = document.getElementById(`msg-${key}`);
+      if (msgElement) {
+        // Update ikon centang
+        const tickElement = msgElement.querySelector('.tick');
+        if (tickElement && data.read) {
+           tickElement.classList.add('read'); // Tambah class hijau/biru
+           tickElement.textContent = "done_all"; // Ubah icon jadi centang dua
+        }
+      }
+    });
+  }
 
   function renderMessage(msg, key) {
-  const isMe = msg.sender === myUsername;
-  const div = document.createElement('div');
-  div.className = `message ${isMe ? 'me' : 'friend'}`;
-  div.id = `msg-${key}`; // Beri ID unik agar bisa diperbarui secara realtime
-  
-  let content = "";
-  let deleteBtn = "";
-
-  // 1. Cek apakah pesan sudah ditarik
-  if (msg.isDeleted) {
-    content = `<div class="msg-deleted"><span class="material-symbols-rounded" style="font-size:14px; vertical-align:middle;">block</span> Pesan ditarik</div>`;
-  } else {
-    // Render normal
-    if (msg.type === 'image') content = `<img src="${msg.text}" onclick="window.open(this.src)">`;
+    const isMe = msg.sender === myUsername;
+    const div = document.createElement('div');
+    div.className = `message ${isMe ? 'me' : 'friend'}`;
+    div.id = `msg-${key}`; // Pasang ID supaya bisa diupdate nanti
+    
+    let content = "";
+    if(msg.type === 'image') content = `<img src="${msg.text}" onclick="window.open(this.src)">`;
     else content = `<div>${msg.text}</div>`;
     
-    // Munculkan ikon hapus HANYA untuk pesan yang kita kirim sendiri
-    if (isMe) {
-      deleteBtn = `<button class="btn-delete" onclick="hapusPesan('${key}')"><span class="material-symbols-rounded" style="font-size:18px;">delete</span></button>`;
-    }
-  }
-  
-  const time = new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  const tickIcon = msg.read ? "done_all" : "done"; 
-  const tickClass = msg.read ? "tick read" : "tick";
+    const time = new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    
+    // Logika Icon Centang
+    // done = centang satu (terkirim)
+    // done_all = centang dua (dibaca)
+    const tickIcon = msg.read ? "done_all" : "done"; 
+    const tickClass = msg.read ? "tick read" : "tick";
 
-  // Desain footer pesan
-  div.innerHTML = `
-    ${content} 
-    <div class="msg-footer" style="display:flex; justify-content:flex-end; align-items:center; margin-top:4px;">
-      ${deleteBtn}
-      <span class="msg-time">${time}</span>
-      <span class="material-symbols-rounded ${tickClass}" style="font-size:14px; margin-left:4px;">${msg.isDeleted ? '' : tickIcon}</span>
-    </div>
-  `;
-  
-  // Jika pesan sudah ada di layar (karena ada update status ditarik/dibaca), ganti (replace) elemennya.
-  // Jika belum ada, tambahkan ke layar (append).
-  const existingMsg = document.getElementById(`msg-${key}`);
-  if (existingMsg) {
-    existingMsg.replaceWith(div);
-  } else {
+    div.innerHTML = `
+      ${content} 
+      <div class="msg-footer">
+        <span class="msg-time">${time}</span>
+        <span class="material-symbols-rounded ${tickClass}">${tickIcon}</span>
+      </div>
+    `;
+    
     chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
   }
-  
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
 
   // --- SEND MESSAGE ---
   document.getElementById('btn-send').addEventListener('click', sendText);
@@ -584,24 +540,6 @@ function loadMessages(roomId) {
     chatScreen.classList.remove('hidden');
   }
   function showLoading(show) { loading.style.display = show ? 'flex' : 'none'; }
-
-  // --- PEMICU INDIKATOR MENGETIK ---
-let typingTimer;
-document.getElementById('msg-input').addEventListener('input', () => {
-  if(!currentRoomId) return;
-  
-  // 1. Ubah status mengetik menjadi 'true' di Firebase saat ada ketikan
-  set(ref(db, `typing_status/${currentRoomId}/${myUsername}`), true);
-
-  // 2. Hapus hitungan waktu mundur lama
-  clearTimeout(typingTimer);
-  
-  // 3. Jika selama 1.5 detik tidak ada ketikan baru, ubah status jadi 'false'
-  typingTimer = setTimeout(() => {
-    set(ref(db, `typing_status/${currentRoomId}/${myUsername}`), false);
-  }, 1500);
-});
-  
 </script>
 
 </body>
