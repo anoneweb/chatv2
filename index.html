@@ -106,7 +106,7 @@
   <div id="auth-screen">
     <div id="form-login">
       <h2 class="auth-title">Login 👋</h2>
-      <input type="email" id="login-email" class="input-field" placeholder="Email">
+      <input type="text" id="login-input" class="input-field" placeholder="Email atau Username">
       <input type="password" id="login-pass" class="input-field" placeholder="Password">
       <button id="btn-do-login" class="btn-primary">Masuk</button>
       <p style="text-align:center; font-size:13px; margin-top:15px;">Belum punya akun? <span onclick="switchForm('register')" style="color:var(--primary); cursor:pointer; font-weight:bold;">Daftar</span></p>
@@ -236,12 +236,41 @@
   });
 
   document.getElementById('btn-do-login').addEventListener('click', async () => {
-    try {
-      showLoading(true);
-      await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-pass').value);
-    } catch(e) { alert("Login Gagal: " + e.message); }
-    finally { showLoading(false); }
-  });
+  const inputVal = document.getElementById('login-input').value.trim();
+  const pass = document.getElementById('login-pass').value;
+
+  if (!inputVal || !pass) return alert("Mohon isi Email/Username dan Password!");
+
+  try {
+    showLoading(true);
+    let emailToLogin = inputVal; // Default-nya kita anggap user mengetik email
+
+    // Cek apakah input BUKAN email (tidak mengandung karakter '@')
+    if (!inputVal.includes('@')) {
+      const uName = inputVal.toLowerCase(); // Samakan format dengan saat daftar
+      
+      // Cari username di Realtime Database
+      const userRef = ref(db, 'users/' + uName);
+      const snap = await get(userRef);
+      
+      if (snap.exists()) {
+        // Username ketemu! Ambil email aslinya dari database
+        emailToLogin = snap.val().email;
+      } else {
+        // Hentikan proses jika username tidak ada
+        throw new Error("Username tidak ditemukan di sistem!");
+      }
+    }
+
+    // Eksekusi login ke Firebase Authentication (menggunakan email dari input langsung, ATAU email hasil pencarian)
+    await signInWithEmailAndPassword(auth, emailToLogin, pass);
+
+  } catch(e) { 
+    alert("Login Gagal: " + e.message); 
+  } finally { 
+    showLoading(false); 
+  }
+});
 
   // --- 2. LOBBY & SEARCH SYSTEM ---
   
